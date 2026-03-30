@@ -207,7 +207,7 @@ def get_target_currency(account_data_list: list[AccountData]) -> str:
 def build_investments_config(beangrow_cfg: Any, account_data_map: dict[str, AccountData], commodities: list[Commodity]):
     accounts = [
         InvestmentAccount(
-            id=f"a_{investment.asset_account}",
+            id=f"a_{investment.asset_account}_{investment.currency}",
             currency=investment.currency,
             assetAccount=investment.asset_account,
         )
@@ -245,7 +245,7 @@ def filter_investments(
     if investment_filter:
         for account in investment_groups.accounts:
             if account.id in investment_filter:
-                accounts.add(account.assetAccount)
+                accounts.add(f"{account.assetAccount}_{account.currency}")
 
         for group in investment_groups.groups:
             if group.id in investment_filter:
@@ -255,8 +255,19 @@ def filter_investments(
             if currency.id in investment_filter:
                 for account_data in account_data_map.values():
                     if account_data.currency == currency.currency:
-                        accounts.add(account_data.account)
+                        accounts.add(f"{account_data.account}_{account_data.currency}")
     else:
         accounts.update(account_data_map.keys())
 
-    return [account_data_map[account] for account in accounts]
+    import fnmatch
+    matched_data = []
+    for pattern in accounts:
+        if pattern in account_data_map:
+            matched_data.append(account_data_map[pattern])
+        else:
+            for key, account_data in account_data_map.items():
+                if fnmatch.fnmatch(key, pattern) or fnmatch.fnmatch(account_data.account, pattern):
+                    matched_data.append(account_data)
+                    
+    # Deduplicate
+    return list({id(ad): ad for ad in matched_data}.values())
