@@ -1,10 +1,11 @@
 import datetime
 import itertools
+from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
-from typing import NamedTuple
 from typing import Optional
+from typing import TypeAlias
 
 from beancount.core import getters
 from beancount.core import prices
@@ -20,32 +21,39 @@ from fava_portfolio_returns._vendor.beangrow.investments import Account
 from fava_portfolio_returns._vendor.beangrow.investments import AccountData
 from fava_portfolio_returns._vendor.beangrow.investments import CashFlow
 from fava_portfolio_returns._vendor.beangrow.investments import Cat
+from fava_portfolio_returns._vendor.beangrow.investments import Currency
 from fava_portfolio_returns._vendor.beangrow.investments import extract
 from fava_portfolio_returns.core.pricer import Pricer
 from fava_portfolio_returns.core.utils import inv_to_currency
 
+InvestmentId: TypeAlias = str
 
-class InvestmentAccount(NamedTuple):
-    id: str
-    currency: str
+
+@dataclass(frozen=True)
+class InvestmentAccount:
+    id: InvestmentId
+    currency: Currency
     assetAccount: str
 
 
-class InvestmentGroup(NamedTuple):
-    id: str
+@dataclass(frozen=True)
+class InvestmentGroup:
+    id: InvestmentId
     name: str
     investments: list[str]
-    currency: str
+    currency: Optional[Currency]
 
 
-class LedgerCurrency(NamedTuple):
-    id: str
-    currency: str
+@dataclass(frozen=True)
+class LedgerCurrency:
+    id: InvestmentId
+    currency: Currency
     name: str
     isInvestment: bool
 
 
-class InvestmentsConfig(NamedTuple):
+@dataclass(frozen=True)
+class InvestmentsConfig:
     accounts: list[InvestmentAccount]
     groups: list[InvestmentGroup]
     currencies: list[LedgerCurrency]
@@ -81,19 +89,15 @@ class Portfolio:
         else:
             self.beangrow_cfg = read_config_from_string(beangrow_config, [], list(accounts))
 
+        beangrow_debug_dir_str = str(beangrow_debug_dir) if beangrow_debug_dir else ""
         self.account_data_map = extract(
-            entries,
-            dcontext,
-            self.beangrow_cfg,
-            entries[-1].date,
-            False,
-            str(beangrow_debug_dir) if beangrow_debug_dir else "",
-        )
-        self.investments_config = build_investments_config(
-            self.beangrow_cfg, self.account_data_map, [e for e in entries if isinstance(e, Commodity)]
+            entries, dcontext, self.beangrow_cfg, entries[-1].date, False, beangrow_debug_dir_str
         )
 
-    def filter(self, investment_filter: list[str], target_currency: Optional[str]):
+        commodities = [e for e in entries if isinstance(e, Commodity)]
+        self.investments_config = build_investments_config(self.beangrow_cfg, self.account_data_map, commodities)
+
+    def filter(self, investment_filter: list[InvestmentId], target_currency: Optional[Currency]):
         account_data_list = filter_investments(self.investments_config, self.account_data_map, investment_filter)
         if not target_currency:
             target_currency = get_target_currency(account_data_list)
@@ -106,6 +110,8 @@ class Portfolio:
             if commodity.currency not in commodity_sources:
                 commodity_sources[commodity.currency] = commodity.meta.get("price")
 
+        # required_prices: [((source_currency, required_date), {(cost_currency, actual_date, rate), ...}), ...]
+        # actual_date/rate is None when no price is available.
         # sort by date and currency
         required_prices = sorted(self.pricer.required_prices.items(), key=lambda x: (x[0][1], x[0][0]))
 
@@ -118,10 +124,16 @@ class Portfolio:
                 if len(found_dates) != 1:
                     raise ValueError(f"Found multiple prices for {currency} on {required_date}: {found_dates}")
 
-                _cost_currency, actual_date, _rate = list(found_dates)[0]
-                days_late = (required_date - actual_date).days
-                if days_late < 5 or required_date > today:
+                if required_date > today:
                     continue
+
+                _cost_currency, actual_date, _rate = list(found_dates)[0]
+                if actual_date is None:
+                    days_late = None
+                else:
+                    days_late = (required_date - actual_date).days
+                    if days_late < 5:
+                        continue
 
                 missing_prices.append(
                     {
@@ -150,9 +162,9 @@ class FilteredPortfolio:
 
     portfolio: Portfolio
     account_data_list: list[AccountData]
-    target_currency: str
+    target_currency: Currency
 
-    def __init__(self, portfolio: Portfolio, account_data_list: list[AccountData], target_currency: str):
+    def __init__(self, portfolio: Portfolio, account_data_list: list[AccountData], target_currency: Currency):
         self.portfolio = portfolio
         self.account_data_list = account_data_list
         self.target_currency = target_currency
@@ -238,7 +250,7 @@ def build_investments_config(beangrow_cfg: Any, account_data_map: dict[str, Acco
 def filter_investments(
     investment_groups: InvestmentsConfig,
     account_data_map: dict[str, AccountData],
-    investment_filter: list[str],
+    investment_filter: list[InvestmentId],
 ) -> list[AccountData]:
     accounts = set()
 
