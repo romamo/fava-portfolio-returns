@@ -4,7 +4,7 @@ from typing import Literal
 
 from dateutil.relativedelta import relativedelta
 
-from fava_portfolio_returns._vendor.beangrow.reports import Interval
+from beangrow.reports import Interval
 
 ONE_DAY = datetime.timedelta(days=1)
 

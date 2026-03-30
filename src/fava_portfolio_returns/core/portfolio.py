@@ -15,14 +15,14 @@ from beancount.core.inventory import Inventory
 from fava.beans.types import BeancountOptions
 from fava.helpers import FavaAPIError
 
-from fava_portfolio_returns._vendor.beangrow.config import read_config
-from fava_portfolio_returns._vendor.beangrow.config import read_config_from_string
-from fava_portfolio_returns._vendor.beangrow.investments import Account
-from fava_portfolio_returns._vendor.beangrow.investments import AccountData
-from fava_portfolio_returns._vendor.beangrow.investments import CashFlow
-from fava_portfolio_returns._vendor.beangrow.investments import Cat
-from fava_portfolio_returns._vendor.beangrow.investments import Currency
-from fava_portfolio_returns._vendor.beangrow.investments import extract
+from beangrow.config import read_config
+from beangrow.config import read_config_from_string
+from beangrow.investments import Account
+from beangrow.investments import AccountData
+from beangrow.investments import CashFlow
+from beangrow.investments import Cat
+from beangrow.investments import Currency
+from beangrow.investments import extract
 from fava_portfolio_returns.core.pricer import Pricer
 from fava_portfolio_returns.core.utils import inv_to_currency
 

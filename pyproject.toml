@@ -26,6 +26,7 @@ dependencies = [
     "numpy>=1.26.4",
     "scipy>=1.13.1",
     "pandas>=2.2.2",
+    "beangrow",
 ]
 
 [project.urls]
@@ -110,3 +111,6 @@ patches-dir = "tools/vendoring/patches"
 drop = [
   "bin/",
 ]
+
+[tool.uv.sources]
+beangrow = { path = "../beangrow", editable = true }

@@ -7,7 +7,7 @@ from beancount import Position
 from beancount.core import convert
 from fava.helpers import FavaAPIError
 
-from fava_portfolio_returns._vendor.beangrow.returns import Pricer as BeangrowPricer
+from beangrow.returns import Pricer as BeangrowPricer
 
 
 class CurrencyConversionException(FavaAPIError):

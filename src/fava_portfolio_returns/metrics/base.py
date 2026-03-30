@@ -1,7 +1,7 @@
 import abc
 import datetime
 
-from fava_portfolio_returns._vendor.beangrow.reports import Interval
+from beangrow.reports import Interval
 from fava_portfolio_returns.core.portfolio import FilteredPortfolio
 
 Series = list[tuple[datetime.date, float]]
