@@ -21,13 +21,13 @@ logger = logging.getLogger(__name__)
 def group_stats(p: FilteredPortfolio, start_date: datetime.date, end_date: datetime.date):
     # compute unrealized P/L at start_date
     balance_start = p.balance_at(start_date - ONE_DAY)
-    cost_value_start = cost_value_of_inv(p.pricer, p.target_currency, balance_start)
+    cost_value_start = cost_value_of_inv(p.pricer, p.target_currency, balance_start, start_date - ONE_DAY)
     market_value_start = market_value_of_inv(p.pricer, p.target_currency, balance_start, start_date - ONE_DAY)
     unrealized_pnl_start = market_value_start - cost_value_start
 
     # compute portfolio stats at end_date
     balance = p.balance_at(end_date)
-    cost_value = cost_value_of_inv(p.pricer, p.target_currency, balance)
+    cost_value = cost_value_of_inv(p.pricer, p.target_currency, balance, end_date)
     # calculate market value with positions held at cost
     # this will convert for example CORP -> USD (cost currency) -> EUR (target currency)
     market_value = market_value_of_inv(p.pricer, p.target_currency, balance, end_date)
@@ -61,7 +61,6 @@ def group_stats(p: FilteredPortfolio, start_date: datetime.date, end_date: datet
 
 def investments_group_by_group(p: Portfolio, start_date: datetime.date, end_date: datetime.date):
     for group in p.investments_config.groups:
-        logger.debug("calculating stats for %s", group.name)
         fp = p.filter([group.id], group.currency)
         yield {
             "id": group.id,
@@ -75,7 +74,6 @@ def investments_group_by_currency(
     p: Portfolio, target_currency: str, start_date: datetime.date, end_date: datetime.date
 ):
     for currency in p.investments_config.currencies:
-        logger.debug("calculating stats for %s", currency.name)
         fp = p.filter([currency.id], target_currency)
         yield {
             "id": currency.id,

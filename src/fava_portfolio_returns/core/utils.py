@@ -2,6 +2,7 @@ import datetime
 from decimal import Decimal
 from typing import Optional
 
+from beancount import Amount
 from beancount.core import convert
 from beancount.core import prices
 from beancount.core.inventory import Inventory
@@ -30,15 +31,25 @@ def market_value_of_inv(pricer: Pricer, target_currency: str, balance: Inventory
 def inv_to_currency(
     pricer: Pricer, target_currency: str, inventory: Inventory, date: Optional[datetime.date] = None
 ) -> Decimal:
-    cost_balance = inventory.reduce(pricer.convert_position, target_currency, date)
-    pos = cost_balance.get_only_position()
-    return pos.units.number if pos else ZERO
+    try:
+        cost_balance = inventory.reduce(pricer.convert_position, target_currency, date)
+        pos = cost_balance.get_only_position()
+        return pos.units.number if pos else ZERO
+    except CurrencyConversionException:
+        return ZERO
 
 
 def convert_cash_flows_to_currency(pricer: Pricer, target_currency: str, flows: list[CashFlow]) -> list[CashFlow]:
     target_flows = []
     for flow in flows:
-        target_amt = pricer.convert_amount(flow.amount, target_currency, flow.date)
+        conv_date = flow.date
+
+        try:
+            target_amt = pricer.convert_amount(flow.amount, target_currency, conv_date)
+        except CurrencyConversionException:
+            # Fallback to zero-amount flow if conversion is impossible
+            target_amt = Amount(ZERO, target_currency)
+
         target_flow = flow._replace(amount=target_amt)
         target_flows.append(target_flow)
     return target_flows

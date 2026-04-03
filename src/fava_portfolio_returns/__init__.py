@@ -110,19 +110,25 @@ class FavaPortfolioReturns(FavaExtensionBase):
             raise FavaAPIError("No operating currency specified in the ledger")
         currency = request.args.get("currency", operating_currencies[0])
 
+        # Get duration from ledger
+        ledger_date_first, ledger_date_last = get_ledger_duration(g.filtered.entries_with_all_prices)
+
+        # Cap to yesterday by default to avoid missing price errors for "today"
+        today = date.today()
+        yesterday = today - datetime.timedelta(days=1)
+        if ledger_date_last >= today:
+            ledger_date_last = max(ledger_date_first, yesterday)
+
         if g.filtered.date_range:
             filter_first = g.filtered.date_range.begin
             filter_last = g.filtered.date_range.end - datetime.timedelta(days=1)
-            # Use filtered ledger here, as another filter (e.g. tag filter) could be applied.
-            ledger_date_first, ledger_date_last = get_ledger_duration(g.filtered.entries_with_all_prices)
             # Adjust the dates to align with ledger data.
             date_first, date_last = clamp_to_ledger_range(
                 filter_first, filter_last, ledger_date_first, ledger_date_last
             )
         else:
             # No time filter applied.
-            # Use filtered ledger here, as another filter (e.g. tag filter) could be applied.
-            date_first, date_last = get_ledger_duration(g.filtered.entries_with_all_prices)
+            date_first, date_last = ledger_date_first, ledger_date_last
 
         return ToolbarContext(
             investment_filter=sel_investments,
