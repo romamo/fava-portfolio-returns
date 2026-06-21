@@ -30,7 +30,9 @@ class IRR(MetricBase):
                 parts.append(f"{-(flow.amount.number or 0):.2f}*(1+x)^{years:.2f}")
             logger.debug("Calculating IRR from %s to %s: %s = 0", start_date, end_date, " + ".join(parts))
 
-        if all(flow.amount.number == 0 for flow in cash_flows):
+        # IRR needs at least two cash flows (e.g. an investment and a return) to be
+        # defined; a single flow (or only zero-valued flows) has no meaningful rate.
+        if len(cash_flows) < 2 or all(flow.amount.number == 0 for flow in cash_flows):
             return 0.0
 
         return compute_irr(cash_flows, p.pricer, p.target_currency, end_date + ONE_DAY)

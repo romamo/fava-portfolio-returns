@@ -20,7 +20,9 @@ class ModifiedDietzMethod(MetricBase):
         cash_flows = truncate_and_merge_cash_flows(p.pricer, p.account_data_list, start_date, end_date + ONE_DAY)
         cash_flows = convert_cash_flows_to_currency(p.pricer, p.target_currency, cash_flows)
 
-        if all(flow.amount.number == 0 for flow in cash_flows):
+        # Modified Dietz divides by the average capital; with fewer than two cash flows
+        # (or only zero-valued flows) that is zero, which would yield inf/NaN.
+        if len(cash_flows) < 2 or all(flow.amount.number == 0 for flow in cash_flows):
             return 0.0
 
         return compute_dietz(cash_flows, p.pricer, p.target_currency, end_date + ONE_DAY)
