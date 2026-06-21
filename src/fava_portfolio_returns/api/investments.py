@@ -1,6 +1,5 @@
 import datetime
 import logging
-import math
 from decimal import Decimal
 
 from beancount.core import convert
@@ -10,6 +9,7 @@ from fava_portfolio_returns.core.portfolio import FilteredPortfolio
 from fava_portfolio_returns.core.portfolio import Portfolio
 from fava_portfolio_returns.core.utils import cost_value_of_inv
 from fava_portfolio_returns.core.utils import market_value_of_inv
+from fava_portfolio_returns.metrics.base import finite_or_none
 from fava_portfolio_returns.metrics.irr import IRR
 from fava_portfolio_returns.metrics.mdd import MDD
 from fava_portfolio_returns.metrics.mdm import ModifiedDietzMethod
@@ -17,20 +17,6 @@ from fava_portfolio_returns.metrics.pnl import TotalPNL
 from fava_portfolio_returns.metrics.twr import TWR
 
 logger = logging.getLogger(__name__)
-
-
-def finite_or_none(value: float) -> float | None:
-    """Return ``None`` for non-finite metrics so they serialize to JSON null.
-
-    Return metrics such as IRR (solved numerically with ``fsolve``) and the
-    Modified Dietz Method (divides by average capital) are undefined for
-    degenerate groups, e.g. a group with zero average capital over the range.
-    They come back as NaN/inf, which JSON cannot represent: emitting them would
-    crash response serialization. ``None`` lets the frontend render them as N/A.
-    """
-    if isinstance(value, float) and not math.isfinite(value):
-        return None
-    return value
 
 
 def group_stats(p: FilteredPortfolio, start_date: datetime.date, end_date: datetime.date):
