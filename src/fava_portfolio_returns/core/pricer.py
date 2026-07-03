@@ -5,9 +5,8 @@ from beancount import Amount
 from beancount import Currency
 from beancount import Position
 from beancount.core import convert
-from fava.helpers import FavaAPIError
-
 from beangrow.returns import Pricer as BeangrowPricer
+from fava.helpers import FavaAPIError
 
 
 class CurrencyConversionException(FavaAPIError):
@@ -35,7 +34,9 @@ class Pricer(BeangrowPricer):
         # 3. Fail: If both failed, then the price is actually missing from the ledger
         raise CurrencyConversionException(target_amt.currency, target_currency, date)
 
-    def convert_position(self, pos: Position, target_currency: Currency, date: Optional[datetime.date] = None):
+    def convert_position(
+        self, pos: Position, target_currency: Currency, date: Optional[datetime.date] = None
+    ) -> Position:
         # 1. Try conversion for the requested date
         target_pos = convert.convert_position(pos, target_currency, self.price_map, date)
         if target_pos.currency == target_currency:

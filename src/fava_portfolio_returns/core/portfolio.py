@@ -1,4 +1,5 @@
 import datetime
+import fnmatch
 import itertools
 from dataclasses import dataclass
 from decimal import Decimal
@@ -12,9 +13,6 @@ from beancount.core import prices
 from beancount.core.data import Commodity
 from beancount.core.data import Directive
 from beancount.core.inventory import Inventory
-from fava.beans.types import BeancountOptions
-from fava.helpers import FavaAPIError
-
 from beangrow.config import read_config
 from beangrow.config import read_config_from_string
 from beangrow.investments import Account
@@ -23,6 +21,9 @@ from beangrow.investments import CashFlow
 from beangrow.investments import Cat
 from beangrow.investments import Currency
 from beangrow.investments import extract
+from fava.beans.types import BeancountOptions
+from fava.helpers import FavaAPIError
+
 from fava_portfolio_returns.core.pricer import Pricer
 from fava_portfolio_returns.core.utils import inv_to_currency
 
@@ -170,7 +171,7 @@ class FilteredPortfolio:
         self.target_currency = target_currency
 
     @property
-    def pricer(self):
+    def pricer(self) -> Pricer:
         return self.portfolio.pricer
 
     def cash_flows(self) -> list[CashFlow]:
@@ -181,7 +182,7 @@ class FilteredPortfolio:
         cash_flows.sort(key=lambda flow: flow.date)
         return cash_flows
 
-    def balance_at(self, date: datetime.date):
+    def balance_at(self, date: datetime.date) -> Inventory:
         """returns the inventory at the given date"""
         balance = Inventory()
         for account_data in self.account_data_list:
@@ -216,7 +217,9 @@ def get_target_currency(account_data_list: list[AccountData]) -> str:
     return cost_currencies.pop()
 
 
-def build_investments_config(beangrow_cfg: Any, account_data_map: dict[str, AccountData], commodities: list[Commodity]):
+def build_investments_config(
+    beangrow_cfg: Any, account_data_map: dict[str, AccountData], commodities: list[Commodity]
+) -> InvestmentsConfig:
     accounts = [
         InvestmentAccount(
             id=f"a_{investment.asset_account}_{investment.currency}",
@@ -269,9 +272,8 @@ def filter_investments(
                     if account_data.currency == currency.currency:
                         accounts.add(f"{account_data.account}_{account_data.currency}")
     else:
-        accounts.update(account_data_map.keys())
+        return list(account_data_map.values())
 
-    import fnmatch
     matched_data = []
     for pattern in accounts:
         if pattern in account_data_map:
@@ -280,6 +282,6 @@ def filter_investments(
             for key, account_data in account_data_map.items():
                 if fnmatch.fnmatch(key, pattern) or fnmatch.fnmatch(account_data.account, pattern):
                     matched_data.append(account_data)
-                    
+
     # Deduplicate
     return list({id(ad): ad for ad in matched_data}.values())

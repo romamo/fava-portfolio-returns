@@ -7,8 +7,8 @@ from beancount.core import convert
 from beancount.core import prices
 from beancount.core.inventory import Inventory
 from beancount.core.number import ZERO
-
 from beangrow.investments import CashFlow
+
 from fava_portfolio_returns.core.pricer import CurrencyConversionException
 from fava_portfolio_returns.core.pricer import Pricer
 

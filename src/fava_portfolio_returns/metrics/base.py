@@ -3,6 +3,7 @@ import datetime
 import math
 
 from beangrow.reports import Interval
+
 from fava_portfolio_returns.core.portfolio import FilteredPortfolio
 
 Series = list[tuple[datetime.date, float]]
@@ -40,7 +41,12 @@ class MetricBase(abc.ABC):
         ]
 
     def rolling_window(
-        self, p: FilteredPortfolio, start_date: datetime.date, end_date: datetime.date, window_days=365, max_points=20
+        self,
+        p: FilteredPortfolio,
+        start_date: datetime.date,
+        end_date: datetime.date,
+        window_days: int = 365,
+        max_points: int = 20,
     ) -> list[tuple[datetime.date, float | None]]:
         window_delta = datetime.timedelta(days=window_days)
 

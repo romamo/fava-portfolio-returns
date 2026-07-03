@@ -1,10 +1,10 @@
 import datetime
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal
 
-from dateutil.relativedelta import relativedelta
-
 from beangrow.reports import Interval
+from dateutil.relativedelta import relativedelta
 
 ONE_DAY = datetime.timedelta(days=1)
 
@@ -80,7 +80,7 @@ def iterate_years(start_date: datetime.date, end_date: datetime.date) -> list[in
     return list(range(year, last_year + 1))
 
 
-def truncate_date_fn(interval: Literal["monthly", "yearly"]):
+def truncate_date_fn(interval: Literal["monthly", "yearly"]) -> Callable[[datetime.date], str]:
     """returns a function which truncates dates, for example 2025-01-01 to 2025-01 (monthly) or 2025 (yearly)"""
     if interval == "monthly":
         return lambda x: f"{x.year}-{x.month:02}"

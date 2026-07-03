@@ -6,11 +6,11 @@ from decimal import Decimal
 
 from beancount.core.inventory import Inventory
 from beancount.core.number import ZERO
-
 from beangrow.investments import AccountData
 from beangrow.investments import Cat
 from beangrow.investments import Currency
 from beangrow.investments import produce_cash_flows_general
+
 from fava_portfolio_returns.core.portfolio import FilteredPortfolio
 from fava_portfolio_returns.core.utils import cost_value_of_inv
 from fava_portfolio_returns.core.utils import get_prices
@@ -132,7 +132,7 @@ def portfolio_values(
             for flow in produce_cash_flows_general(entry, ""):
                 # Convert flow amount to the target_currency at the date of the flow
                 cash_amount_converted = p.pricer.convert_amount(flow.amount, p.target_currency, date)
-                cf_balance_converted += cash_amount_converted.number
+                cf_balance_converted += cash_amount_converted.number or Decimal(0.0)
 
         if date >= first_date:
             # Clamp start_date in case we cut off data at the beginning.

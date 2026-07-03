@@ -21,7 +21,7 @@ class CashFlowChartValue:
 
 def cash_flows_chart(
     p: FilteredPortfolio, start_date: datetime.date, end_date: datetime.date, interval: Literal["monthly", "yearly"]
-):
+) -> list[CashFlowChartValue]:
     cash_flows = p.cash_flows()
     cash_flows = filter_cash_flows_by_date(cash_flows, start_date, end_date)
     cash_flows = convert_cash_flows_to_currency(p.pricer, p.target_currency, cash_flows)
@@ -66,26 +66,33 @@ def dividends_chart(
     start_date: datetime.date,
     end_date: datetime.date,
     interval: Literal["monthly", "yearly"],
-):
+) -> list[dict[str, str | Decimal]]:
     cash_flows = p.cash_flows()
     cash_flows = filter_cash_flows_by_date(cash_flows, start_date, end_date)
     cash_flows = [flow for flow in cash_flows if flow.is_dividend]
     cash_flows = convert_cash_flows_to_currency(p.pricer, p.target_currency, cash_flows)
 
-    currency_by_account = {acc.assetAccount: acc.currency for acc in p.portfolio.investments_config.accounts}
+    currencies_by_account: dict[str, list[str]] = defaultdict(list)
+    for account in p.portfolio.investments_config.accounts:
+        currencies_by_account[account.assetAccount].append(account.currency)
+
     currency_name_by_currency = {cur.currency: cur.name for cur in p.portfolio.investments_config.currencies}
+    # use currency name if account has a single currency, otherwise use account name
+    label_by_account = {
+        asset_account: (asset_account if len(currencies) > 1 else currency_name_by_currency[currencies[0]])
+        for asset_account, currencies in currencies_by_account.items()
+    }
 
     truncate_date = truncate_date_fn(interval)
     # ex. {"2025": {"_date": "2025", "Investment1": 5, "Investment2": 3}}
     chart: dict[str, dict[str, str | Decimal]] = {}
     for flow in cash_flows:
         date = truncate_date(flow.date)
-        currency = currency_by_account[flow.account]
-        currency_name = currency_name_by_currency[currency]
+        label = label_by_account[flow.account]
 
         if date not in chart:
             chart[date] = defaultdict(Decimal)
             chart[date]["_date"] = date
-        chart[date][currency_name] += flow.amount.number  # type: ignore[operator]
+        chart[date][label] += flow.amount.number  # type: ignore[operator]
 
     return sorted(chart.values(), key=lambda x: x["_date"])
