@@ -98,7 +98,7 @@ wheels = [
 [[package]]
 name = "beangrow"
 version = "1.0.1"
-source = { git = "https://github.com/romamo/beangrow?rev=69f02f9ec0d09ce2a39678456a243020459af485#69f02f9ec0d09ce2a39678456a243020459af485" }
+source = { git = "https://github.com/romamo/beangrow?rev=23ff691140986b1309afc48599fd82652eb4fdbf#23ff691140986b1309afc48599fd82652eb4fdbf" }
 dependencies = [
     { name = "beancount" },
     { name = "matplotlib" },
@@ -656,7 +656,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "beancount", specifier = ">=3" },
-    { name = "beangrow", git = "https://github.com/romamo/beangrow?rev=69f02f9ec0d09ce2a39678456a243020459af485" },
+    { name = "beangrow", git = "https://github.com/romamo/beangrow?rev=23ff691140986b1309afc48599fd82652eb4fdbf" },
     { name = "fava", specifier = ">=1.30.6" },
     { name = "numpy", specifier = ">=1.26.4" },
     { name = "pandas", specifier = ">=2.2.2" },

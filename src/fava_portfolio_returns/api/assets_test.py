@@ -23,7 +23,9 @@ class TestAssets(unittest.TestCase):
             assert asset.data[0][0] >= start
             assert asset.data[-1][0] <= end
         last_values = [asset.data[-1][1] for asset in assets]
-        assert last_values == sorted(last_values, reverse=True)
+        assert all(value is not None for value in last_values)
+        present = [value for value in last_values if value is not None]
+        assert present == sorted(present, reverse=True)
 
     def test_returns_metric(self):
         p = load_portfolio_file("savings_plan")

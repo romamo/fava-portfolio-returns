@@ -111,4 +111,4 @@ drop = [
 ]
 
 [tool.uv.sources]
-beangrow = { git = "https://github.com/romamo/beangrow", rev = "69f02f9ec0d09ce2a39678456a243020459af485" }
+beangrow = { git = "https://github.com/romamo/beangrow", rev = "23ff691140986b1309afc48599fd82652eb4fdbf" }
