@@ -4,8 +4,14 @@ import { CSSProperties, useEffect, useRef } from "react";
 import { useConfigContext } from "./Header/ConfigProvider";
 import { useResizeObserver } from "./hooks";
 
+export interface LegendSelectChangedEvent {
+  name: string;
+  selected: Record<string, boolean>;
+}
+
 export interface EChartsSpec extends EChartsOption {
   onClick?: (params: ECElementEvent) => void;
+  onLegendSelectChanged?: (params: LegendSelectChangedEvent) => void;
 }
 
 interface EChartProps {
@@ -40,10 +46,13 @@ export function EChart({ height, option }: EChartProps) {
       height: rect.height,
       locale,
     });
-    const { onClick, ...optionCopy } = option;
+    const { onClick, onLegendSelectChanged, ...optionCopy } = option;
 
     if (onClick) {
       chart.on("click", onClick);
+    }
+    if (onLegendSelectChanged) {
+      chart.on("legendselectchanged", (params) => onLegendSelectChanged(params as LegendSelectChangedEvent));
     }
 
     if (echartsTheme == "dark" && optionCopy.backgroundColor === undefined) {

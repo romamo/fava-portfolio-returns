@@ -21,6 +21,7 @@ from fava.ext import extension_endpoint
 from fava.helpers import FavaAPIError
 from flask import request
 
+from fava_portfolio_returns.api.assets import assets_chart
 from fava_portfolio_returns.api.cash_flows import cash_flows_chart
 from fava_portfolio_returns.api.cash_flows import cash_flows_table
 from fava_portfolio_returns.api.cash_flows import dividends_chart
@@ -185,6 +186,17 @@ class FavaPortfolioReturns(FavaExtensionBase):
             "performanceChart": performance_chart,
             "allocation": allocation,
         }
+
+    @extension_endpoint("assets")
+    @api_response
+    def api_assets(self):
+        toolbar_ctx = self.get_toolbar_ctx()
+        p = self.get_filtered_portfolio(toolbar_ctx)
+        metric_name = request.args.get("metric", "")
+        if metric_name not in ("pnl", "returns"):
+            raise FavaAPIError(f"Invalid metric {metric_name}")
+
+        return {"series": assets_chart(p, toolbar_ctx.start_date, toolbar_ctx.end_date, metric_name)}
 
     @extension_endpoint("compare")
     @api_response

@@ -1,19 +1,22 @@
-import { Alert, useTheme } from "@mui/material";
+import { Alert, Box, ToggleButton, ToggleButtonGroup, useTheme } from "@mui/material";
 import { createRoute, stripSearchParams } from "@tanstack/react-router";
-import { ECElementEvent, EChartsOption } from "echarts";
+import { DefaultLabelFormatterCallbackParams, ECElementEvent, EChartsOption } from "echarts";
+import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
+import { AssetSeries, AssetsMetric, useAssets } from "../api/assets";
 import { PortfolioAllocation, usePortfolio } from "../api/portfolio";
 import { Dashboard, DashboardRow, Panel, PanelGroup, PanelGroupItem } from "../components/Dashboard";
 import { EChart, EChartsSpec } from "../components/EChart";
 import { useToolbarContext } from "../components/Header/ToolbarProvider";
 import { Loading } from "../components/Loading";
-import { anyFormatter, timestampToDate, useCurrencyFormatter } from "../components/format";
+import { anyFormatter, timestampToDate, useCurrencyFormatter, usePercentFormatter } from "../components/format";
 import { useSearchParam } from "../components/useSearchParam";
 import { RootRoute } from "./__root";
 
 const searchSchema = z.object({
-  chart: z.enum(["performance", "value"]).default("performance").catch("performance"),
+  chart: z.enum(["performance", "value", "assets"]).default("performance").catch("performance"),
+  assetsMetric: z.enum(["pnl", "returns"]).default("pnl").catch("pnl"),
 });
 
 export const PortfolioRoute = createRoute({
@@ -21,7 +24,7 @@ export const PortfolioRoute = createRoute({
   path: "portfolio",
   validateSearch: searchSchema,
   search: {
-    middlewares: [stripSearchParams({ chart: "performance" })],
+    middlewares: [stripSearchParams({ chart: "performance", assetsMetric: "pnl" })],
   },
   component: Portfolio,
 });
@@ -29,6 +32,7 @@ export const PortfolioRoute = createRoute({
 function Portfolio() {
   const { t } = useTranslation();
   const [chart, setChart] = useSearchParam(PortfolioRoute, "chart");
+  const [assetsMetric, setAssetsMetric] = useSearchParam(PortfolioRoute, "assetsMetric");
 
   return (
     <Dashboard>
@@ -50,6 +54,17 @@ function Portfolio() {
               sx={{ flex: 2 }}
             >
               <PortfolioValueChart />
+            </Panel>
+          </PanelGroupItem>
+          <PanelGroupItem id="assets" label={t("Performance by Asset")}>
+            <Panel
+              title={t("Performance by Asset")}
+              help={t(
+                "The performance by asset chart shows the performance of each asset of the selected investments. In Returns mode, a line is only drawn while the asset is held. Click on a legend entry to hide or show an asset.",
+              )}
+              sx={{ flex: 2 }}
+            >
+              <AssetsChart metric={assetsMetric} setMetric={setAssetsMetric} />
             </Panel>
           </PanelGroupItem>
         </PanelGroup>
@@ -207,6 +222,141 @@ function PortfolioValueChart() {
   };
 
   return <EChart height="400px" option={option} />;
+}
+
+interface AssetsChartProps {
+  metric: AssetsMetric;
+  setMetric: (metric: AssetsMetric) => void;
+}
+
+function AssetsChart({ metric, setMetric }: AssetsChartProps) {
+  const { t } = useTranslation();
+  const { investmentFilter, targetCurrency } = useToolbarContext();
+  const currencyFormatter = useCurrencyFormatter(targetCurrency);
+  const percentFormatter = usePercentFormatter();
+  const { isPending, error, data } = useAssets({ investmentFilter, targetCurrency, metric });
+  // assets hidden via legend; a ref, because toggling the legend must not re-render the chart
+  const hidden = useRef(new Set<string>());
+  // EChart re-creates the chart with all assets visible after every render, keep the hidden assets in sync
+  useEffect(() => {
+    hidden.current = new Set();
+  });
+
+  const metricSelection = (
+    <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+      <ToggleButtonGroup
+        size="small"
+        exclusive
+        value={metric}
+        onChange={(_, value: AssetsMetric | null) => value && setMetric(value)}
+      >
+        <ToggleButton value="pnl">{t("Total P/L")}</ToggleButton>
+        <ToggleButton value="returns">{t("Returns")}</ToggleButton>
+      </ToggleButtonGroup>
+    </Box>
+  );
+
+  if (isPending) {
+    return <Loading />;
+  }
+  if (error) {
+    return <Alert severity="error">{error.message}</Alert>;
+  }
+
+  const formatter = metric === "pnl" ? currencyFormatter : percentFormatter;
+  const option: EChartsSpec = {
+    color: assetColors,
+    tooltip: {
+      trigger: "axis",
+      confine: true,
+      // many assets do not fit into the chart height, allow scrolling the tooltip
+      enterable: true,
+      extraCssText: "max-height: 440px; overflow-y: auto;",
+      formatter: (params) => assetsTooltip(params as AxisTooltipParams[], data.series, hidden.current, formatter),
+    },
+    legend: {
+      type: "scroll",
+      top: 0,
+    },
+    grid: {
+      top: 40,
+      left: 100,
+      right: 20,
+    },
+    xAxis: {
+      type: "time",
+      axisPointer: {
+        label: {
+          formatter: (params) => timestampToDate(params.value as number),
+        },
+      },
+    },
+    yAxis: {
+      type: "value",
+      axisLabel: {
+        formatter,
+      },
+    },
+    dataZoom: [
+      {
+        type: "slider",
+      },
+    ],
+    series: data.series.map((asset) => ({
+      type: "line",
+      name: asset.currency,
+      showSymbol: false,
+      data: asset.data,
+    })),
+    onLegendSelectChanged: ({ selected }) => {
+      hidden.current = new Set(Object.keys(selected).filter((currency) => !selected[currency]));
+    },
+  };
+
+  return (
+    <>
+      {metricSelection}
+      <EChart height="500px" option={option} />
+    </>
+  );
+}
+
+// axisValue is set for tooltips with trigger "axis", but missing in the exported echarts types
+type AxisTooltipParams = DefaultLabelFormatterCallbackParams & { axisValue: number };
+
+// default echarts palette, set explicitly to derive the color of an asset from its index
+const assetColors = ["#5070dd", "#b6d634", "#505372", "#ff994d", "#0ca8df", "#ffd10a", "#fb628b", "#785db0", "#3fbe95"];
+
+/** lists the assets held at the hovered date, best performing first */
+function assetsTooltip(
+  params: AxisTooltipParams[],
+  assets: AssetSeries[],
+  hidden: Set<string>,
+  formatter: (value: number) => string,
+) {
+  if (params.length === 0) {
+    return "";
+  }
+  // echarts omits series whose nearest point is far away from the hovered date,
+  // therefore look up the last value on or before the hovered date of every asset instead
+  const date = timestampToDate(params[0].axisValue);
+  const held = assets
+    .map((asset, index) => ({
+      asset,
+      color: assetColors[index % assetColors.length],
+      value: asset.data.findLast(([pointDate]) => pointDate <= date)?.[1] ?? null,
+    }))
+    .filter((item): item is { asset: AssetSeries; color: string; value: number } => item.value !== null)
+    .filter(({ asset }) => !hidden.has(asset.currency))
+    .sort((a, b) => b.value - a.value);
+
+  const rows = held.map(
+    ({ asset, color, value }) =>
+      `<div style="display:flex;justify-content:space-between;gap:20px">` +
+      `<span><span style="display:inline-block;margin-right:4px;border-radius:10px;width:10px;height:10px;background-color:${color}"></span>${asset.currency}</span>` +
+      `<b>${formatter(value)}</b></div>`,
+  );
+  return [`<div>${date}</div>`, ...rows].join("");
 }
 
 function AllocationChart() {
